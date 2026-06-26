@@ -1,0 +1,76 @@
+plugins {
+    id 'java'
+    id 'application'
+}
+
+group = 'ru.hse.drip.systems'
+version = '1.0-SNAPSHOT'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation platform('com.fasterxml.jackson:jackson-bom:2.21.0')
+    implementation 'com.fasterxml.jackson.core:jackson-databind'
+
+    testImplementation platform('org.junit:junit-bom:5.10.0')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+}
+
+java {
+    sourceCompatibility = '17'
+    targetCompatibility = '17'
+}
+
+application {
+    mainClass = 'ru.hse.drip.systems.raft.cli.CliMain'
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+}
+
+def defaultPeers = 'n1=127.0.0.1:9101,n2=127.0.0.1:9102,n3=127.0.0.1:9103,n4=127.0.0.1:9104,n5=127.0.0.1:9105'
+
+def raftNodeTask = { String taskName, String nodeId, String port ->
+    tasks.register(taskName, JavaExec) {
+        classpath = sourceSets.main.runtimeClasspath
+        mainClass = 'ru.hse.drip.systems.raft.node.RaftNodeMain'
+        args '--id', nodeId,
+                '--port', port,
+                '--data-dir', 'data',
+                '--peers', defaultPeers,
+                '--fsync', 'on'
+    }
+}
+
+raftNodeTask('runNode1', 'n1', '9101')
+raftNodeTask('runNode2', 'n2', '9102')
+raftNodeTask('runNode3', 'n3', '9103')
+raftNodeTask('runNode4', 'n4', '9104')
+raftNodeTask('runNode5', 'n5', '9105')
+
+tasks.register('runCli', JavaExec) {
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'ru.hse.drip.systems.raft.cli.CliMain'
+    standardInput = System.in
+}
+
+tasks.register('runBenchmark', JavaExec) {
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'ru.hse.drip.systems.raft.benchmark.BenchmarkMain'
+}
+
+
+tasks.register('runRequiredBenchmarks', JavaExec) {
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'ru.hse.drip.systems.raft.benchmark.BenchmarkSuiteMain'
+}
+
+
+tasks.register('printRuntimeClasspath') {
+    doLast {
+        println(sourceSets.main.runtimeClasspath.asPath)
+    }
+}
